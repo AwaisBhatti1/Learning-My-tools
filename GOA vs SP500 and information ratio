@@ -1,0 +1,60 @@
+import pandas as pd
+import yfinance as yf
+import numpy as np
+
+# Download portfolio and benchmark returns data
+gof = yf.download('GOF', start='2019-06-04', end='2024-06-04')
+spx = yf.download('SPY', start='2019-06-04', end='2024-06-04')
+
+# Calculate monthly returns
+monthly_returns_gof = gof['Adj Close'].pct_change(1)
+monthly_returns_spx = spx['Adj Close'].pct_change(1)
+
+# Risk-free rate (adjust as needed)
+risk_free_rate = 0.005
+
+# Calculate annualized standard deviation (assuming 12 months in a year)
+annualized_std_gof = monthly_returns_gof.std() * np.sqrt(12)
+annualized_std_spx = monthly_returns_spx.std() * np.sqrt(12)
+
+
+# Calculate rolling Sharpe Ratio
+def rolling_sharpe_ratio(returns, risk_free_rate, window):
+  excess_returns = returns - risk_free_rate
+  rolling_sharpe = excess_returns.rolling(window=window).mean() / annualized_std_gof
+  return rolling_sharpe
+
+# Calculate rolling Information Ratio
+def rolling_information_ratio(portfolio_returns, benchmark_returns, window):
+  excess_portfolio_returns = portfolio_returns - risk_free_rate
+  excess_benchmark_returns = benchmark_returns - risk_free_rate
+  rolling_info_ratio = (excess_portfolio_returns - excess_benchmark_returns).rolling(window=window).mean() / annualized_std_gof
+  return rolling_info_ratio
+
+# Choose window size for rolling calculations (e.g., 12 for monthly data)
+window = 30
+
+rolling_sharpe_gof = rolling_sharpe_ratio(monthly_returns_gof, risk_free_rate, window)
+rolling_sharpe_spx = rolling_sharpe_ratio(monthly_returns_spx, risk_free_rate, window)
+
+rolling_info_ratio = rolling_information_ratio(monthly_returns_gof, monthly_returns_spx, window)
+
+# Plotting
+fig, ax1 = plt.subplots()
+
+# Plot Sharpe Ratio (left axis)
+ax1.plot(monthly_returns_gof.index, rolling_sharpe_gof, label='Portfolio Sharpe Ratio', linewidth=0.4)
+ax1.plot(monthly_returns_spx.index, rolling_sharpe_spx, label='Benchmark Sharpe Ratio', linewidth=0.3)
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Sharpe Ratio', color='b')
+ax1.tick_params(axis='y', labelcolor='b')
+
+# Plot Information Ratio (right axis)
+ax2 = ax1.twinx()
+ax2.plot(monthly_returns_gof.index, rolling_info_ratio, label='Information Ratio', color='g', linewidth=0.9)
+ax2.set_ylabel('Information Ratio', color='g')
+ax2.tick_params(axis='y', labelcolor='g')
+
+plt.title('Growth Of America Fund vs S&P 500 Performance (2019-2024)')
+plt.legend()
+plt.show()
